@@ -1,4 +1,4 @@
-# ppm-img-view
+# ppm-viewer
 
 A minimal PPM image viewer written in C using SDL2.
 
