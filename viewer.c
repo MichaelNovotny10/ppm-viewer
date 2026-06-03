@@ -231,26 +231,29 @@ SDL_Texture* createTexture(SDL_Renderer* renderer, Pixel* p, ImgInfo* img) {
 }
 
 /*
- * runEventLoop — draws the texture and processes window events until the user closes the window.
- * The image is already on the GPU, so each frame is just a blit — very efficient.
+ * runEventLoop — renders the image once, then blocks waiting for OS events.
+ * SDL_WaitEvent sleeps the thread until an event arrives, so CPU usage is near zero.
+ * The image is re-rendered on SDL_WINDOWEVENT_EXPOSED so it reappears correctly
+ * after being covered by another window or after Alt+Tab.
  */
 void runEventLoop(SDL_Renderer* renderer, SDL_Texture* texture) {
-    bool keep_window_open = true;
-    while (keep_window_open) {
-        /* Copy the texture to the renderer's back buffer (NULL = entire texture, entire window) */
-        SDL_RenderCopy(renderer, texture, NULL, NULL);
+    /* Render once upfront — the image is static, so we only need to draw it again on expose */
+    SDL_RenderCopy(renderer, texture, NULL, NULL);
+    SDL_RenderPresent(renderer); /* swap back buffer to screen — image appears here */
 
-        /* Swap back buffer to screen — this is when the image actually appears */
-        SDL_RenderPresent(renderer);
-
-        /* Process all pending OS events (keyboard, mouse, window close, etc.) */
-        SDL_Event e;
-        while (SDL_PollEvent(&e) > 0) {
-            switch (e.type) {
-                case SDL_QUIT: /* user clicked the X or pressed Alt+F4 */
-                    keep_window_open = false;
-                    break;
-            }
+    /* SDL_WaitEvent blocks until an event arrives, keeping CPU usage near zero */
+    SDL_Event e;
+    while (SDL_WaitEvent(&e)) {
+        switch (e.type) {
+            case SDL_QUIT: /* user clicked the X or pressed Alt+F4 */
+                return;
+            case SDL_WINDOWEVENT:
+                /* Re-render when the window is uncovered (e.g. after Alt+Tab or another window moved away) */
+                if (e.window.event == SDL_WINDOWEVENT_EXPOSED) {
+                    SDL_RenderCopy(renderer, texture, NULL, NULL);
+                    SDL_RenderPresent(renderer);
+                }
+                break;
         }
     }
 }
