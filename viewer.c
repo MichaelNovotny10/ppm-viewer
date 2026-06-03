@@ -34,15 +34,16 @@ typedef struct {
 const char* g_usage_str = "Usage: ./viewer <image.ppm>\n";
 
 /* Forward declarations — tell the compiler these functions exist before main sees them */
-char* checkArgs(int argc, char* argv[]);
+void checkArgs(int argc, char* argv[], char* filename, int length);
 Pixel* loadImage(const char* filename, ImgInfo* img);
 int initSDL(const char* title, int width, int height, SDL_Window** window, SDL_Renderer** renderer);
 SDL_Texture* createTexture(SDL_Renderer* renderer, Pixel* p, ImgInfo* img);
 void runEventLoop(SDL_Renderer* renderer, SDL_Texture* texture);
 
 int main(int argc, char* argv[]) {
-    /* Validate arguments and get the filename to open */
-    char* filename = checkArgs(argc, argv);
+    /* Validate arguments and save the filename*/
+    char filename[50];
+    checkArgs(argc, argv, filename, sizeof(filename));
 
     /* img will be filled in by loadImage with the PPM header data */
     ImgInfo img = {0};
@@ -255,13 +256,10 @@ void runEventLoop(SDL_Renderer* renderer, SDL_Texture* texture) {
 }
 
 /*
- * checkArgs — validates the number of command-line arguments and returns the filename to open.
+ * checkArgs — validates the number of command-line arguments.
  * Defaults to "image.ppm" if no argument is given.
  */
-char* checkArgs(int argc, char* argv[]) {
-    /* static so the array lives beyond this function call — safe to return a pointer to it */
-    static char filename[50] = {0};
-
+void checkArgs(int argc, char* argv[], char* filename, int size) {
     if (argc > 2) {
         fprintf(stderr, "Error: Incorrect amount of arguments given.\n");
         printf("%s", g_usage_str);
@@ -269,9 +267,14 @@ char* checkArgs(int argc, char* argv[]) {
     }
     else if (argc == 1) strcpy(filename, "image.ppm"); /* default filename */
     else {
-        strncpy(filename, argv[1], sizeof(filename));
-        filename[sizeof(filename) - 1] = '\0'; /* strncpy won't null-terminate if src is too long */
+        int length = strlen(argv[1]);
+        /* size - 1 to leave room for the null terminator */
+        if (length > size - 1) {
+            fprintf(stderr, "Error: Filename too long.\n");
+            exit(1);
+        }
+        /* copy length + 1 to include the null terminator from argv[1] */
+        strncpy(filename, argv[1], length + 1);
+        filename[length] = '\0'; /* strncpy won't null-terminate if src is too long */
     }
-
-    return filename;
 }
