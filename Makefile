@@ -3,3 +3,5 @@ build:
 
 run: build
 	./viewer
+clean:
+	rm ./viewer
